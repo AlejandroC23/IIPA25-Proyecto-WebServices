@@ -126,7 +126,7 @@ async def infoDevice(request: Request):
         }
 
     async with httpx.AsyncClient() as client:
-        await client.post("http://127.0.0.1:8000/stadistic/", json=info_stadistic)
+        await client.post("http://127.0.0.1:8000/stadistic", json=info_stadistic)
 
     return {
         "ip": clientIP,
@@ -156,14 +156,14 @@ async def listClients():
 db_stadistics: list[Stadistic] = []
 
 
-@app.post("/stadistic/", response_model=Stadistic)
+@app.post("/stadistic", response_model=Stadistic)
 async def generateStadistic(infoStadistic: Stadistic):
     stadistic = Stadistic.model_validate(infoStadistic.model_dump())
     db_stadistics.append(stadistic)
     return stadistic
 
 
-@app.get("/stadistics/")
+@app.get("/stadistics")
 async def viewStadistics():
     if not db_stadistics:
         return {"message": "No hay estadísticas registradas todavía."}

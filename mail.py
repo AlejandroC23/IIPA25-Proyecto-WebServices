@@ -31,7 +31,7 @@ def autenticar_gmail():
 
 
 def crear_mensaje(destinatario, asunto, cuerpo):
-    mensaje = MIMEText(cuerpo)
+    mensaje = MIMEText(cuerpo, "html", "utf-8")
     mensaje["to"] = destinatario
     mensaje["subject"] = asunto
     mensaje_bytes = mensaje.as_bytes()
@@ -44,11 +44,3 @@ def enviar_correo(destinatario, asunto, cuerpo):
     mensaje = crear_mensaje(destinatario, asunto, cuerpo)
     enviado = service.users().messages().send(userId="me", body=mensaje).execute()
     print(f"Correo enviado, ID: {enviado['id']}")
-
-
-# Ejemplo de uso:
-destinatario = "trexmrtop23@gmail.com"
-asunto = "Prueba desde API Gmail"
-cuerpo = "Este es un mensaje enviado usando la API de Gmail con Python. Estamos con los guaguas de 5to"
-
-enviar_correo(destinatario, asunto, cuerpo)
