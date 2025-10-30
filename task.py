@@ -1,7 +1,8 @@
+from datetime import datetime
+from globals import WEEKDAY, HOUR
 import asyncio
 import httpx
 import time
-from datetime import datetime
 
 from mail import enviar_correo
 
@@ -119,7 +120,7 @@ def createTableConnections(connections: list) -> str:
 
 def awaitDateTime():
     now = datetime.now()
-    return now.weekday() == 1 and now.hour == 22
+    return now.weekday() == WEEKDAY and now.hour == HOUR
 
 
 async def service():

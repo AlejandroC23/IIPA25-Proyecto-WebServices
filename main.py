@@ -1,15 +1,25 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from models import Client, Stadistic
-from datetime import datetime
-from zoneinfo import ZoneInfo
+import json
+import os
+import re
 from collections import Counter
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List
+from zoneinfo import ZoneInfo
+
 import geoip2.database
 import httpx
-import re
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+
+from globals import FILENAMEPREFIX, HOUR, WEEKDAY
+from models import Client, DateRange, Stadistic
 
 app = FastAPI()
 reader = geoip2.database.Reader("GeoLite2-City.mmdb")
+
+database_path = "database_stadistics/"  # Se calculará al inicio
+temp_data: List[Dict[str, Any]] = []
 
 app.add_middleware(
     CORSMiddleware,
@@ -153,23 +163,57 @@ async def listClients():
     return db_clients
 
 
-db_stadistics: list[Stadistic] = []
+def getFilepath() -> str:
+    now = datetime.now()
+    date_str = now.strftime("%W") + now.strftime("%m%y")
+    return f"./{database_path + FILENAMEPREFIX}{date_str}.json"
 
 
-@app.post("/stadistic", response_model=Stadistic)
-async def generateStadistic(infoStadistic: Stadistic):
-    stadistic = Stadistic.model_validate(infoStadistic.model_dump())
-    db_stadistics.append(stadistic)
-    return stadistic
+def loadData(filepath: str) -> List[Dict[str, Any]]:
+    if not os.path.exists(filepath):
+        return []
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("stadistics", []) if isinstance(data, dict) else []
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
 
 
-@app.get("/stadistics")
-async def viewStadistics():
-    if not db_stadistics:
+def saveData(filepath: str, data: List[Dict[str, Any]]):
+    existing_data = loadData(filepath)
+    all_data = existing_data + data
+
+    final_json = {"stadistics": all_data}
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(final_json, f, indent=4, default=str)
+
+
+def checkData():
+    global temp_data
+
+    now = datetime.now()
+    filepath = getFilepath()
+    awaitDataTime = (now.weekday() > WEEKDAY) or (
+        now.weekday() == WEEKDAY and now.hour >= HOUR
+    )
+
+    if awaitDataTime:
+        pass
+
+    if temp_data:
+        saveData(filepath, temp_data)
+        temp_data = []
+
+
+def processListStats(stadistics: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not stadistics:
         return {"message": "No hay estadísticas registradas todavía."}
 
-    total = len(db_stadistics)
+    db_stadistics = [Stadistic.model_validate(s) for s in stadistics]
 
+    total = len(db_stadistics)
     countries = [s.country for s in db_stadistics if s.country]
     cities = [s.city for s in db_stadistics if s.city]
     navegators = [s.navegator for s in db_stadistics if s.navegator]
@@ -189,7 +233,11 @@ async def viewStadistics():
                 "so": s.so,
                 "time": s.time,
             }
-            for s in sorted(db_stadistics, key=lambda x: x.time, reverse=True)[:5]
+            for s in sorted(
+                db_stadistics,
+                key=lambda x: datetime.fromisoformat(x.time),
+                reverse=True,
+            )[:5]
         ],
     }
 
@@ -200,3 +248,64 @@ async def viewStadistics():
         stats["activity_hour"] = {}
 
     return stats
+
+
+@app.on_event("startup")
+async def startup():
+    pass
+
+
+@app.post("/stadistic", response_model=Stadistic)
+async def generateStadistic(infoStadistic: Stadistic):
+    stadistic = Stadistic.model_validate(infoStadistic.model_dump())
+
+    stadistic_data = jsonable_encoder(stadistic)
+
+    global temp_data
+    temp_data.append(stadistic_data)
+
+    checkData()
+
+    return stadistic
+
+
+@app.get("/stadistics")
+async def viewStadistics():
+    current_filepath = getFilepath()
+    weekly_data = loadData(current_filepath)
+
+    global temp_data
+    all_data = weekly_data + temp_data
+
+    return processListStats(all_data)
+
+
+@app.post("/stadistics/range")
+async def viewStadisticsByRange(date_range: DateRange):
+    start_date = datetime.combine(date_range.date_start, datetime.min.time())
+    end_date = datetime.combine(
+        date_range.date_end + timedelta(days=1), datetime.min.time()
+    )
+
+    all_data: List[Dict[str, Any]] = []
+
+    for filename in os.listdir(f"./{database_path}"):
+        if filename.startswith(FILENAMEPREFIX) and filename.endswith(".json"):
+            file_date_str = filename.replace(FILENAMEPREFIX, "").replace(".json", "")
+            try:
+                file_date = datetime.strptime(file_date_str, "%d%m%y")
+                if start_date <= file_date < end_date:
+                    all_data.extend(loadData(filename))
+            except ValueError:
+                continue
+
+    ranged_data = []
+    for stat in all_data:
+        try:
+            stat_time = datetime.fromisoformat(stat["time"])
+            if start_date <= stat_time < end_date:
+                ranged_data.append(stat)
+        except Exception:
+            continue
+
+    return processListStats(ranged_data)

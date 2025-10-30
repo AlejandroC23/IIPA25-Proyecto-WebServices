@@ -1,0 +1,3 @@
+WEEKDAY = 2
+HOUR = 16
+FILENAMEPREFIX = "stadistics_"
