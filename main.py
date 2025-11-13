@@ -107,7 +107,7 @@ async def infoDevice(request: Request):
                 "country": country,
                 "city": city,
                 "timezone": timezone,
-                "time": datetime.now(info_timezone),
+                "time": str(datetime.now(info_timezone)),
             }
         except Exception:
             data = {"error": "IP no encontrada en la base de datos de redes"}
@@ -136,7 +136,7 @@ async def infoDevice(request: Request):
         }
 
     async with httpx.AsyncClient() as client:
-        await client.post("http://127.0.0.1:8000/stadistic", json=info_stadistic)
+        await client.post("http://186.65.35.43:8000/stadistic", json=info_stadistic)
 
     return {
         "ip": clientIP,

@@ -1,12 +1,13 @@
-from datetime import datetime
-from globals import WEEKDAY, HOUR
 import asyncio
-import httpx
 import time
+from datetime import datetime
 
+import httpx
+
+from globals import HOUR, WEEKDAY
 from mail import enviar_correo
 
-API_URL = "http://127.0.0.1:8000/stadistics"
+API_URL = "http://186.65.35.43:8000/stadistics"
 RECEIVER = "alejandro.cevallos919@ist17dejulio.edu.ec"
 SUBJECT = "Reporte de estadísticas - Página Web"
 INTERVAL = 10  # 3600 Una hora
