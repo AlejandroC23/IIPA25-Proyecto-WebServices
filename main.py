@@ -136,7 +136,7 @@ async def infoDevice(request: Request):
         }
 
     async with httpx.AsyncClient() as client:
-        await client.post("http://186.65.35.43:8000/stadistic", json=info_stadistic)
+        await client.post("http://20.120.230.79:8000/stadistic", json=info_stadistic)
 
     return {
         "ip": clientIP,

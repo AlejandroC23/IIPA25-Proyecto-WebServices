@@ -7,7 +7,7 @@ import httpx
 from globals import HOUR, WEEKDAY
 from mail import enviar_correo
 
-API_URL = "http://186.65.35.43:8000/stadistics"
+API_URL = "http://20.120.230.79:8000/stadistics"
 RECEIVER = "alejandro.cevallos919@ist17dejulio.edu.ec"
 SUBJECT = "Reporte de estadísticas - Página Web"
 INTERVAL = 10  # 3600 Una hora
